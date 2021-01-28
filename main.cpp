@@ -6,6 +6,7 @@
 #include <math.h>
 
 #define N 8
+#define paletteN 5
 
 typedef cv::Point3_<uint8_t> Pixel;
 enum COLOR_MASK
@@ -27,20 +28,21 @@ typedef struct color
 void count_color(cv::Mat img, Color *result);
 Pixel get_hsv_color_mean(Color c);
 Pixel hsv2rgb(Pixel p);
+void kthBiggest(Color *v, int p, int q, int k);
+float rearrange(Color *v, int p, int q);
+void switch_values(Color *a, Color *b);
 
 int main(int argc, char **argv)
 {
   //ARGS SETUP
-  if (argc != 3)
+  if (argc != 2)
   {
-    std::cout << "Parameters required: \n1. number os colors to include in the palet" << std::endl
-              << "2. picture to perform work upon." << std::endl;
+    std::cout << "Parameter required: number os colors to include in the palet" << std::endl;
     return 0;
   }
-  int K = atoi(argv[1]);
 
   //IMAGE SETUP
-  cv::Mat picture = cv::imread(argv[2], cv::IMREAD_COLOR);
+  cv::Mat picture = cv::imread(argv[1], cv::IMREAD_COLOR);
   cv::Mat result;
 
   //COUNT COLORS AND ADD TO Ni DIVISION, i IS THE DIVISION OF THE i-th PIXEL
@@ -50,16 +52,21 @@ int main(int argc, char **argv)
 
   count_color(picture, count);
 
-  /////////////////////////////////////////////////////////////////////////////////
-  for (int i = 0; i < N; i++)
-    printf("%d ", count[i].count);
-  printf("\n");
-
   Pixel mean = get_hsv_color_mean(count[BLUE]);
   Pixel rgb_mean = hsv2rgb(mean);
-  printf("BLUE MEAN COLOR: (h,s,v) = (%d,%d,%d)\n", mean.x, mean.y, mean.z);
-  printf("BLUE MEAN COLOR: (r,g,b) = (%d,%d,%d)\n", rgb_mean.x, rgb_mean.y, rgb_mean.z);
-  printf("BLUE MEAN COLOR: hex = %X%X%X\n", rgb_mean.x, rgb_mean.y, rgb_mean.z);
+
+  kthBiggest(count, 0, N, 5);
+  printf("%-17s%-17s%-17s\n\n", "HSV", "RGB", "HEX:");
+  for (int i = 0; i < paletteN; i++)
+  {
+    Pixel hsv_mean = get_hsv_color_mean(count[i]);
+    Pixel rgb_mean = hsv2rgb(hsv_mean);
+    printf("(%3d, %3d, %3d)\t (%3d, %3d, %3d)  #%02X%02X%02X\n",
+           hsv_mean.x, hsv_mean.y, hsv_mean.z,
+           rgb_mean.x, rgb_mean.y, rgb_mean.z,
+           rgb_mean.x, rgb_mean.y, rgb_mean.z);
+  }
+  printf("\n");
 
   system("exit");
   return 0;
@@ -110,7 +117,10 @@ void count_color(cv::Mat img, Color *result)
 
 Pixel get_hsv_color_mean(Color c)
 {
-  return Pixel(c.h_sum / c.count, c.s_sum / c.count, c.v_sum / c.count);
+  if (c.count == 0)
+    return Pixel(0, 0, 0);
+  else
+    return Pixel(c.h_sum / c.count, c.s_sum / c.count, c.v_sum / c.count);
 }
 
 Pixel hsv2rgb(Pixel p)
@@ -139,4 +149,51 @@ Pixel hsv2rgb(Pixel p)
 
   Pixel rgb = Pixel((r + m) * 255, (g + m) * 255, (b + m) * 255);
   return rgb;
+}
+
+void kthBiggest(Color *v, int p, int q, int k)
+{
+  //certifica que existe mais que 0 elementos no array
+  if (q - p <= 0 && k < q - p)
+    return;
+
+  //variaveis auxiliares para ajudar na seleção de qual parte do vetor continuar a procura pelo
+  //elemento de posição 'k'
+  int start = p, end = q;
+
+  //laço que interrompe quando o k-ésimo elemento é encontrado
+  int pivot = rearrange(v, start, end);
+  while (pivot != k)
+  {
+    //condicionais para otimizar busca da função de rearranjo dos elementos do vetor
+    if (pivot > k) //se o pivot achado vir depois de k, procurar no subvetor anterior a ele
+      end = pivot;
+    else //se o pivot achado vir antes de k, procurar no subvetor sucessor a ele
+      start = pivot + 1;
+    //--------------------
+
+    //atualizar o pivot de acordo com o subvetor de v delimitado por 'start' e 'end'
+    pivot = rearrange(v, start, end);
+  }
+  return;
+}
+
+float rearrange(Color *v, int p, int q)
+{
+  int random_pos = (rand() % (q - p)) + p;
+  switch_values(&v[random_pos], &v[q - 1]);
+
+  int j, i = p, pivot = v[q - 1].count;
+  for (j = p; j < q - 1; j++)
+    if (v[j].count > pivot)
+      switch_values(&v[i++], &v[j]);
+  switch_values(&v[i], &v[j]);
+  return i;
+}
+
+void switch_values(Color *a, Color *b)
+{
+  Color aux = *a;
+  *a = *b;
+  *b = aux;
 }
