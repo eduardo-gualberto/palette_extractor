@@ -61,7 +61,7 @@ int main(int argc, char **argv)
   {
     Pixel hsv_mean = get_hsv_color_mean(count[i]);
     Pixel rgb_mean = hsv2rgb(hsv_mean);
-    printf("(%3d, %3d, %3d)\t (%3d, %3d, %3d)  #%02X%02X%02X\n",
+    printf("(%3d, %3d, %3d)\t (%3d, %3d, %3d)  #%02x%02x%02x\n",
            hsv_mean.x, hsv_mean.y, hsv_mean.z,
            rgb_mean.x, rgb_mean.y, rgb_mean.z,
            rgb_mean.x, rgb_mean.y, rgb_mean.z);
